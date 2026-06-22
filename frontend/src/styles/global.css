@@ -1,0 +1,152 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: hsl(0, 0%, 15%);
+  margin: auto;
+  text-align: center;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  color: aliceblue;
+  font-family: comfortaa, verdana;
+}
+
+p {
+  color: aliceblue;
+  font-family: comfortaa, verdana;
+}
+
+main {
+  padding: 20px;
+}
+
+/* header (was an inline style on <header> in the original markup) */
+.site-header {
+  background-color: lightpink;
+}
+
+.dropdown {
+  display: inline-block;
+}
+
+.dropdown button {
+  background-color: lightblue;
+  color: black;
+  border: none;
+  cursor: pointer;
+  font-family: comfortaa;
+  font-size: 15px;
+}
+
+.dropdown a {
+  display: block;
+  color: black;
+  text-decoration: none;
+  padding: 15px 20px;
+  background-color: lightblue;
+
+  border-color: white;
+  border-width: 1px;
+  border-radius: 5px;
+  border-style: solid;
+
+  height: 55px;
+  min-width: 145px;
+}
+
+.dropdown .content {
+  display: none;
+  position: absolute;
+
+  text-decoration: none;
+  color: black;
+  font-size: 15px;
+
+  font-family: comfortaa, verdana;
+}
+
+.dropdown:hover .content {
+  display: block;
+}
+
+.dropdown:hover button {
+  background-color: hsl(195, 53%, 75%);
+}
+
+.dropdown a:hover {
+  background-color: hsl(195, 53%, 75%);
+}
+
+.dropdown button:hover {
+  background-color: hsl(195, 53%, 75%);
+}
+
+#botao_1_index {
+  color: black;
+  background-color: lightblue;
+
+  padding: 15px 20px;
+  height: 55px;
+  min-width: 145px;
+
+  font-family: comfortaa, verdana;
+  text-decoration: none;
+  font-size: 15px;
+
+  border-color: white;
+  border-width: 1px;
+  border-radius: 5px;
+  border-style: solid;
+
+  cursor: pointer;
+
+  display: inline-block;
+}
+
+#botao_1_index:hover {
+  background-color: hsl(195, 53%, 75%);
+}
+
+#botao_1_index:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#button {
+  margin: 5px;
+}
+
+#p2 {
+  color: black;
+  padding-top: 25px;
+}
+
+/* search form: the original CSS targeted a single #search_index id that was
+   (invalidly) reused on both the form and its label. Replaced with classes. */
+.search-form,
+.search-label {
+  display: inline-block;
+  padding-top: 15px;
+  padding-bottom: 15px;
+  font-family: comfortaa, verdana;
+  color: aliceblue;
+}
+
+.search-message {
+  color: aliceblue;
+  font-family: comfortaa, verdana;
+  font-size: 14px;
+  margin: 4px 0 0;
+}
+
+.sona-portrait {
+  max-width: 280px;
+  border-radius: 12px;
+  margin: 12px 0;
+}
