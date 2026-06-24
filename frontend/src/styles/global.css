@@ -26,127 +26,527 @@ main {
   padding: 20px;
 }
 
-/* header (was an inline style on <header> in the original markup) */
+/* ─────────────────────────────────────────
+   HEADER
+───────────────────────────────────────── */
+
+/* Outer wrapper — sticky at the top, provides breathing room around the pill */
+.header-wrapper {
+  padding: 16px 20px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* The pill itself */
 .site-header {
-  background-color: lightpink;
+  background: #f9c8d4;
+  border-radius: 14px;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.dropdown {
-  display: inline-block;
+/* ── Logo ── */
+.logo {
+  font-family: comfortaa, verdana;
+  font-size: 16px;
+  font-weight: 700;
+  color: #3a1a22;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  margin-right: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.dropdown button {
-  background-color: lightblue;
-  color: black;
+.logo span {
+  color: #c45070;
+}
+
+/* ── Nav ── */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Pill buttons shared by all top-level nav links */
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
+  height: 36px;
+  border-radius: 99px;
+  font-family: comfortaa, verdana;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a1a22;
+  text-decoration: none;
+  background: transparent;
   border: none;
   cursor: pointer;
-  font-family: comfortaa;
+  white-space: nowrap;
+  transition: background 0.15s;
+  line-height: 1;
+}
+
+.nav-btn i {
   font-size: 15px;
 }
 
-.dropdown a {
-  display: block;
-  color: black;
-  text-decoration: none;
-  padding: 15px 20px;
-  background-color: lightblue;
-
-  border-color: white;
-  border-width: 1px;
-  border-radius: 5px;
-  border-style: solid;
-
-  height: 55px;
-  min-width: 145px;
+.nav-btn:hover,
+.nav-btn--active {
+  background: rgba(255, 255, 255, 0.55);
 }
 
-.dropdown .content {
-  display: none;
+/* ── About-me dropdown ── */
+.dropdown {
+  position: relative;
+}
+
+/* Chevron rotates when dropdown opens */
+.header-chevron {
+  transition: transform 0.2s;
+}
+
+.dropdown:hover .header-chevron {
+  transform: rotate(180deg);
+}
+
+/* Panel appears on hover via opacity + translate (no display:none flash) */
+.dropdown-panel {
   position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-6px);
+  background: #fff0f4;
+  border: 0.5px solid rgba(196, 80, 112, 0.3);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  z-index: 200;
+}
 
-  text-decoration: none;
-  color: black;
-  font-size: 15px;
+.dropdown:hover .dropdown-panel {
+  opacity: 1;
+  pointer-events: all;
+  transform: translateX(-50%) translateY(0);
+}
 
+/* Individual items inside the panel */
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
   font-family: comfortaa, verdana;
-}
-
-.dropdown:hover .content {
-  display: block;
-}
-
-.dropdown:hover button {
-  background-color: hsl(195, 53%, 75%);
-}
-
-.dropdown a:hover {
-  background-color: hsl(195, 53%, 75%);
-}
-
-.dropdown button:hover {
-  background-color: hsl(195, 53%, 75%);
-}
-
-#botao_1_index {
-  color: black;
-  background-color: lightblue;
-
-  padding: 15px 20px;
-  height: 55px;
-  min-width: 145px;
-
-  font-family: comfortaa, verdana;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3a1a22;
   text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.dropdown-item i {
+  font-size: 14px;
+  color: #c45070;
+}
+
+.dropdown-item:hover,
+.dropdown-item.active {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Search pill ── */
+.search-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 0.5px solid rgba(196, 80, 112, 0.25);
+  border-radius: 99px;
+  padding: 0 10px 0 14px;
+  height: 36px;
+  margin-left: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.search-pill:focus-within {
+  background: rgba(255, 255, 255, 0.8);
+  border-color: rgba(196, 80, 112, 0.5);
+}
+
+.search-pill > i {
   font-size: 15px;
+  color: #3a1a22;
+  flex-shrink: 0;
+}
 
-  border-color: white;
-  border-width: 1px;
-  border-radius: 5px;
-  border-style: solid;
+.search-pill input {
+  border: none;
+  background: transparent;
+  font-family: comfortaa, verdana;
+  font-size: 13px;
+  color: #3a1a22;
+  width: 90px;
+  outline: none;
+  line-height: 1;
+}
 
+.search-pill input::placeholder {
+  color: #b07080;
+}
+
+/* Arrow icon button — visible but minimal */
+.search-pill-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 99px;
+  border: none;
+  background: transparent;
+  color: #c45070;
   cursor: pointer;
-
-  display: inline-block;
+  font-size: 15px;
+  transition: background 0.12s;
+  flex-shrink: 0;
+  padding: 0;
 }
 
-#botao_1_index:hover {
-  background-color: hsl(195, 53%, 75%);
+.search-pill-submit:hover {
+  background: rgba(196, 80, 112, 0.15);
 }
 
-#botao_1_index:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
+/* Search result / not-found message */
+.search-message {
+  color: #f9c8d4;
+  font-family: comfortaa, verdana;
+  font-size: 13px;
+  margin: 8px 0 0;
+  text-align: center;
 }
 
+/* ─────────────────────────────────────────
+   CONTENT
+───────────────────────────────────────── */
+
+/* Pet-the-cat button on the gallery page */
 #button {
   margin: 5px;
 }
 
-#p2 {
-  color: black;
-  padding-top: 25px;
-}
-
-/* search form: the original CSS targeted a single #search_index id that was
-   (invalidly) reused on both the form and its label. Replaced with classes. */
-.search-form,
-.search-label {
-  display: inline-block;
-  padding-top: 15px;
-  padding-bottom: 15px;
-  font-family: comfortaa, verdana;
-  color: aliceblue;
-}
-
-.search-message {
-  color: aliceblue;
-  font-family: comfortaa, verdana;
-  font-size: 14px;
-  margin: 4px 0 0;
-}
-
+/* Sona portrait on the aboutmysona page */
 .sona-portrait {
   max-width: 280px;
   border-radius: 12px;
   margin: 12px 0;
+}
+
+/* ─────────────────────────────────────────
+   GALLERY / CLICKER GAME
+───────────────────────────────────────── */
+
+.gallery {
+  max-width: 600px;
+  margin: 24px auto;
+  padding: 0 16px 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.gallery-loading {
+  margin-top: 60px;
+  opacity: 0.7;
+}
+
+/* ── Event banner ─────────────────────────────────────────────────────── */
+
+.event-banner {
+  width: 100%;
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-family: comfortaa, verdana;
+  font-size: 15px;
+  font-weight: 700;
+  animation: banner-in 0.25s ease;
+}
+
+.event-banner--golden_paw {
+  background: #fff3c0;
+  color: #7a5500;
+  border: 1px solid #f0c040;
+}
+
+.event-banner--cat_nap {
+  background: #e8e0ff;
+  color: #4a3a80;
+  border: 1px solid #b09ee0;
+}
+
+.event-banner--frenzy {
+  background: #ddf4e8;
+  color: #1a5c38;
+  border: 1px solid #60d090;
+}
+
+@keyframes banner-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Stats row ────────────────────────────────────────────────────────── */
+
+.game-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.stat-block {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 18px;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.stat-block--hot {
+  border-color: #f0c040;
+  box-shadow: 0 0 8px rgba(240, 192, 64, 0.35);
+}
+
+.stat-label {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-family: comfortaa, verdana;
+  font-size: 22px;
+  font-weight: 700;
+  color: aliceblue;
+}
+
+/* ── Energy bar ───────────────────────────────────────────────────────── */
+
+.energy-bar-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.energy-label {
+  font-family: comfortaa, verdana;
+  font-size: 12px;
+  color: #aaa;
+  flex-shrink: 0;
+  width: 48px;
+  text-align: right;
+}
+
+.energy-bar-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.energy-bar-fill {
+  height: 100%;
+  background: #6ecf6e;      /* overridden inline with computed energyColor */
+  border-radius: 99px;
+  transition: width 0.3s linear, background 0.5s;
+}
+
+.energy-value {
+  font-family: comfortaa, verdana;
+  font-size: 12px;
+  color: #aaa;
+  flex-shrink: 0;
+  width: 52px;
+  text-align: left;
+}
+
+/* ── Active-effect pills ──────────────────────────────────────────────── */
+
+.effects-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.effect-pill {
+  font-family: comfortaa, verdana;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+.effect-pill--frenzy {
+  background: rgba(60, 220, 100, 0.2);
+  color: #6ecf8a;
+  border: 1px solid rgba(60, 220, 100, 0.4);
+}
+
+.effect-pill--catnap {
+  background: rgba(180, 160, 240, 0.2);
+  color: #c0b0f0;
+  border: 1px solid rgba(180, 160, 240, 0.4);
+}
+
+/* ── Cat button ───────────────────────────────────────────────────────── */
+
+.cat-click-area {
+  position: relative;
+}
+
+.cat-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  position: relative;         /* anchor for floating +N labels */
+  border-radius: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.08s ease;
+}
+
+.cat-btn img {
+  display: block;
+  max-height: 420px;
+  width: auto;
+  border-radius: 12px;
+  pointer-events: none;
+  transition: filter 0.15s;
+}
+
+.cat-btn:hover img {
+  filter: brightness(1.06);
+}
+
+.cat-btn--clicking {
+  transform: scale(0.96);
+}
+
+.cat-btn--sleeping img,
+.cat-btn--sleeping:hover img {
+  filter: grayscale(60%) brightness(0.7);
+  cursor: not-allowed;
+}
+
+/* ── Floating +N score labels ─────────────────────────────────────────── */
+
+.floating-point {
+  position: absolute;
+  pointer-events: none;
+  font-family: comfortaa, verdana;
+  font-size: 22px;
+  font-weight: 700;
+  color: #f9c8d4;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  animation: float-up 1s ease forwards;
+}
+
+@keyframes float-up {
+  0%   { opacity: 1; transform: translate(-50%, -100%); }
+  75%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -240%); }
+}
+
+/* ── Status message (blocked clicks, errors) ──────────────────────────── */
+
+.status-msg {
+  font-family: comfortaa, verdana;
+  font-size: 14px;
+  color: #f0c080;
+  background: rgba(240, 192, 128, 0.12);
+  border: 1px solid rgba(240, 192, 128, 0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin: 0;
+  animation: banner-in 0.2s ease;
+}
+
+/* ── Upgrade panel ────────────────────────────────────────────────────── */
+
+.upgrade-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.upgrade-level {
+  margin: 0;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.upgrade-level strong {
+  color: aliceblue;
+}
+
+.upgrade-btn {
+  font-family: comfortaa, verdana;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 24px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #666;
+  cursor: not-allowed;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.upgrade-btn--ready {
+  background: rgba(249, 200, 212, 0.2);
+  border-color: #f9c8d4;
+  color: #f9c8d4;
+  cursor: pointer;
+}
+
+.upgrade-btn--ready:hover {
+  background: rgba(249, 200, 212, 0.35);
+}
+
+.upgrade-status {
+  margin: 0;
+  font-family: comfortaa, verdana;
+  font-size: 13px;
+  color: #aaa;
+  animation: banner-in 0.2s ease;
 }
