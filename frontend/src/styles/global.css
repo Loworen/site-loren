@@ -418,7 +418,8 @@ main {
   border: 1px solid rgba(60, 220, 100, 0.4);
 }
 
-.effect-pill--catnap {
+/* matches the ActiveEffect literal 'cat_nap' used in className template strings */
+.effect-pill--cat_nap {
   background: rgba(180, 160, 240, 0.2);
   color: #c0b0f0;
   border: 1px solid rgba(180, 160, 240, 0.4);
@@ -549,4 +550,245 @@ main {
   font-size: 13px;
   color: #aaa;
   animation: banner-in 0.2s ease;
+}
+
+/* ─────────────────────────────────────────
+   THREE-PANEL GAME LAYOUT
+───────────────────────────────────────── */
+
+/* Wide page wrapper for the main game state */
+.gallery-game {
+  max-width: 1080px;
+  margin: 20px auto;
+  padding: 0 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Three-column grid: [click panel] [center] [auto panel] */
+.game-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 220px;
+  gap: 14px;
+  align-items: start;
+}
+
+/* Center column matches the old single-column gallery feel */
+.game-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* ── Upgrade side panels ─────────────────────────────────────────────── */
+
+.upgrades-panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Stick in the viewport so it stays visible while scrolling the cat area */
+  position: sticky;
+  top: 88px;
+  max-height: calc(100vh - 108px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+
+/* Panel heading */
+.panel-title {
+  font-family: comfortaa, verdana;
+  font-size: 10px;
+  font-weight: 700;
+  color: #f9c8d4;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin: 0 0 2px;
+}
+
+/* PPS counter inside the auto panel */
+.panel-pps {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 6px 10px;
+  background: rgba(249, 200, 212, 0.08);
+  border: 1px solid rgba(249, 200, 212, 0.18);
+  border-radius: 8px;
+  margin-bottom: 2px;
+}
+
+.panel-pps-value {
+  font-family: comfortaa, verdana;
+  font-size: 20px;
+  font-weight: 700;
+  color: #f9c8d4;
+}
+
+.panel-pps-label {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  color: #aaa;
+}
+
+/* ── Upgrade item cards ──────────────────────────────────────────────── */
+
+.upgrade-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  padding: 10px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: border-color 0.15s;
+}
+
+/* Active (non-placeholder) card gets a subtle pink outline */
+.upgrade-item:not(.upgrade-item--placeholder) {
+  border-color: rgba(249, 200, 212, 0.22);
+}
+
+/* Placeholder cards are visually quieter */
+.upgrade-item--placeholder {
+  opacity: 0.55;
+}
+
+.upgrade-item-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.upgrade-item-icon {
+  font-size: 17px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.upgrade-item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.upgrade-item-name {
+  font-family: comfortaa, verdana;
+  font-size: 12px;
+  font-weight: 700;
+  color: aliceblue;
+  margin: 0;
+}
+
+.upgrade-item-level {
+  font-family: comfortaa, verdana;
+  font-size: 10px;
+  color: #999;
+  margin: 0;
+}
+
+/* PPS tag shown on auto-upgrade cards */
+.upgrade-item-pps {
+  font-family: comfortaa, verdana;
+  font-size: 10px;
+  color: #6ecf8a;
+  margin: 0;
+}
+
+.upgrade-item-desc {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  color: #999;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.upgrade-item-desc strong {
+  color: aliceblue;
+  font-weight: 700;
+}
+
+.upgrade-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.upgrade-item-cost {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  color: #f9c8d4;
+}
+
+.upgrade-item-cost--maxed {
+  color: #6ecf6e;
+}
+
+/* Buy button on live (non-placeholder) cards */
+.upgrade-buy-btn {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 11px;
+  border-radius: 99px;
+  border: 1px solid rgba(249, 200, 212, 0.35);
+  background: rgba(249, 200, 212, 0.12);
+  color: #f9c8d4;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.upgrade-buy-btn:hover:not(:disabled) {
+  background: rgba(249, 200, 212, 0.28);
+}
+
+.upgrade-buy-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* "coming soon" badge on placeholder cards */
+.upgrade-coming-tag {
+  font-family: comfortaa, verdana;
+  font-size: 10px;
+  color: #666;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+
+/* Inline feedback under the click panel after a buy action */
+.upgrade-feedback {
+  font-family: comfortaa, verdana;
+  font-size: 12px;
+  color: #aaa;
+  margin: 0;
+  text-align: center;
+  animation: banner-in 0.2s ease;
+}
+
+/* ── Responsive collapse ─────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .game-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* On narrow screens: center content first, panels below */
+  .game-center          { order: 0; }
+  .upgrades-panel--click { order: 1; }
+  .upgrades-panel--auto  { order: 2; }
+
+  .upgrades-panel {
+    position: static;
+    max-height: none;
+  }
 }
