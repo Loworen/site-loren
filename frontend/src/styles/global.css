@@ -792,3 +792,25 @@ main {
     max-height: none;
   }
 }
+
+/* ── Owned / active upgrade state ────────────────────────────────────── */
+
+/* Overrides placeholder opacity and swaps the border to green */
+.upgrade-item--owned {
+  opacity: 1 !important;
+  border-color: rgba(110, 207, 110, 0.35);
+  background: rgba(110, 207, 110, 0.05);
+}
+
+/* Green "active" / "owned" label at the bottom of an owned card */
+.upgrade-item-cost--owned {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  font-weight: 700;
+  color: #6ecf6e;
+}
+
+/* "active ✓" level-line inside owned feature-unlock cards */
+.upgrade-item--owned .upgrade-item-level {
+  color: #6ecf6e;
+}

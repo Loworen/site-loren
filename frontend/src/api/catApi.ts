@@ -5,28 +5,36 @@ import { API_BASE_URL } from './config';
 export type ActiveEffect = 'golden_paw' | 'cat_nap' | 'frenzy';
 
 export interface ClickResult {
-  success: boolean;
+  success:      boolean;
   pointsGained: number;
-  /** Set on failure — tells the UI what to show. */
-  reason?: string;
-  /** Set on success when a random event fired. */
-  event?: ActiveEffect;
-  comboStreak: number;
+  reason?:      string;
+  event?:       ActiveEffect;
+  comboStreak:  number;
 }
 
 export interface GameState {
-  sessionId: string;
-  clicks: number;
-  score: number;
-  energy: number;
-  maxEnergy: number;
-  comboStreak: number;
-  upgradeLevel: number;
-  activeEffects: ActiveEffect[];
-  /** null when the player has reached max level. */
-  nextUpgradeCost: number | null;
-  clicksPerPoint: number;
-  lastClickResult?: ClickResult;
+  sessionId:         string;
+  clicks:            number;
+  score:             number;      // Math.floor of internal float
+  energy:            number;
+  maxEnergy:         number;
+  comboStreak:       number;
+  upgradeLevel:      number;
+  activeEffects:     ActiveEffect[];
+  nextUpgradeCost:   number | null;
+  clicksPerPoint:    number;
+  lastClickResult?:  ClickResult;
+  unlockedFeatures:  string[];   // which one-time feature unlocks are active
+  ownedAutoUpgrades: string[];   // which auto upgrades have been purchased
+  totalPps:          number;     // current pts/sec from owned auto upgrades
+}
+
+// ── Shared response type for all purchase actions ─────────────────────────
+
+export interface PurchaseResult {
+  state:    GameState;
+  success:  boolean;
+  reason?:  string;
 }
 
 // ── API functions ─────────────────────────────────────────────────────────
@@ -39,7 +47,7 @@ export async function initSession(): Promise<GameState> {
 }
 
 /**
- * Fetches live state for an existing session (energy regeneration included).
+ * Fetches live state for an existing session (energy regen + PPS tick applied).
  * Returns null when the session is not found or has expired.
  */
 export async function fetchSession(sessionId: string): Promise<GameState | null> {
@@ -50,28 +58,60 @@ export async function fetchSession(sessionId: string): Promise<GameState | null>
   return data;
 }
 
-/** Sends one click action to the server. Returns updated state + outcome. */
+/** Sends one click action. Returns updated state + per-click outcome. */
 export async function clickCat(
   sessionId: string,
 ): Promise<{ state: GameState; result: ClickResult }> {
   const res = await fetch(`${API_BASE_URL}/cat/click`, {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId }),
+    body:    JSON.stringify({ sessionId }),
   });
   if (!res.ok) throw new Error(`clickCat failed: ${res.status}`);
   return res.json() as Promise<{ state: GameState; result: ClickResult }>;
 }
 
-/** Attempts to purchase the next upgrade tier. */
-export async function upgradeCat(
-  sessionId: string,
-): Promise<{ state: GameState; success: boolean; reason?: string }> {
+/** Purchases the next sharp-claws tier upgrade. */
+export async function upgradeCat(sessionId: string): Promise<PurchaseResult> {
   const res = await fetch(`${API_BASE_URL}/cat/upgrade`, {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId }),
+    body:    JSON.stringify({ sessionId }),
   });
   if (!res.ok) throw new Error(`upgradeCat failed: ${res.status}`);
-  return res.json() as Promise<{ state: GameState; success: boolean; reason?: string }>;
+  return res.json() as Promise<PurchaseResult>;
+}
+
+/**
+ * Purchases a one-time feature unlock.
+ * featureId: 'combo_bonus' | 'golden_paw' | 'frenzy'
+ */
+export async function purchaseFeatureUnlock(
+  sessionId: string,
+  featureId: string,
+): Promise<PurchaseResult> {
+  const res = await fetch(`${API_BASE_URL}/cat/unlock`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ sessionId, featureId }),
+  });
+  if (!res.ok) throw new Error(`purchaseFeatureUnlock failed: ${res.status}`);
+  return res.json() as Promise<PurchaseResult>;
+}
+
+/**
+ * Purchases a one-time auto upgrade (passive PPS income).
+ * upgradeId: 'sleepy_helper' | 'purr_engine' | 'nap_buddy' | 'dream_factory' | 'cat_cafe'
+ */
+export async function purchaseAutoUpgrade(
+  sessionId: string,
+  upgradeId: string,
+): Promise<PurchaseResult> {
+  const res = await fetch(`${API_BASE_URL}/cat/auto`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ sessionId, upgradeId }),
+  });
+  if (!res.ok) throw new Error(`purchaseAutoUpgrade failed: ${res.status}`);
+  return res.json() as Promise<PurchaseResult>;
 }
