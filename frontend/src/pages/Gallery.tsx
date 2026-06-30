@@ -8,6 +8,7 @@ import {
   upgradeCat,
   purchaseFeatureUnlock,
   purchaseAutoUpgrade,
+  purchaseClickUpgrade,
   type GameState,
   type ActiveEffect,
 } from '../api/catApi';
@@ -38,6 +39,8 @@ const EVENT_MESSAGES: Record<ActiveEffect, string> = {
   frenzy:     '⚡ Frenzy! Free clicks are active.',
 };
 
+const POWER_SURGE_MESSAGE = '🔋 Power Surge! 5× score this click!';
+
 const EFFECT_LABELS: Record<ActiveEffect, string> = {
   golden_paw: 'golden paw',
   cat_nap:    'cat nap',
@@ -64,12 +67,12 @@ interface AutoUpgradeDef {
   previewPpsLabel?: string;
 }
 
-interface ClickPlaceholderDef {
+interface ClickUpgradeUiDef {
   id:          string;
   icon:        string;
   name:        string;
   description: string;
-  previewCost: number;
+  cost:        number; // must match CLICK_UPGRADE_DEFS in cat-types.ts
 }
 
 /** One-time unlocks that activate gated click mechanics. */
@@ -142,28 +145,28 @@ const AUTO_UPGRADE_DEFS: AutoUpgradeDef[] = [
   },
 ];
 
-/** Click augments that are not yet wired to the backend. */
-const CLICK_PLACEHOLDER_DEFS: ClickPlaceholderDef[] = [
+/** Click upgrades — one-time purchases that modify click outcomes. */
+const CLICK_UPGRADE_UI_DEFS: ClickUpgradeUiDef[] = [
   {
     id:          'double_strike',
     icon:        '✌️',
     name:        'double strike',
     description: '25% chance for each click to count twice.',
-    previewCost: 500,
+    cost:        500,
   },
   {
     id:          'click_overflow',
     icon:        '💥',
     name:        'click overflow',
-    description: 'Each click also deals 10% of your pets/sec as bonus damage.',
-    previewCost: 750,
+    description: 'Each click also adds 10% of your pets/sec as bonus score.',
+    cost:        750,
   },
   {
     id:          'power_surge',
     icon:        '🔋',
     name:        'power surge',
-    description: 'Every 10th click deals 5× normal score.',
-    previewCost: 1_000,
+    description: 'Every 10th click since purchase deals 5× normal score.',
+    cost:        1_000,
   },
 ];
 
@@ -186,7 +189,7 @@ function Gallery() {
   const [upgradeMessage, setUpgradeMessage] = useState(''); // left panel feedback
   const [autoMessage,    setAutoMessage]    = useState(''); // right panel feedback
   const [floatingPoints, setFloatingPoints] = useState<FloatingPoint[]>([]);
-  const [eventBanner,    setEventBanner]    = useState<ActiveEffect | null>(null);
+  const [eventBanner,    setEventBanner]    = useState<{ message: string; variant: string } | null>(null);
   const [isClicking,     setIsClicking]     = useState(false);
 
   const floatIdRef        = useRef(0);
@@ -237,10 +240,14 @@ function Gallery() {
     statusTimerRef.current = setTimeout(() => setStatusMessage(''), ms);
   }
 
-  function showBanner(effect: ActiveEffect, ms = 3_000) {
-    setEventBanner(effect);
+  function showBanner(message: string, variant: string, ms = 3_000) {
+    setEventBanner({ message, variant });
     if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
     bannerTimerRef.current = setTimeout(() => setEventBanner(null), ms);
+  }
+
+  function showEffectBanner(effect: ActiveEffect, ms = 3_000) {
+    showBanner(EVENT_MESSAGES[effect], effect, ms);
   }
 
   function spawnFloatingPoint(points: number, x: number, y: number) {
@@ -274,7 +281,8 @@ function Gallery() {
       setDisplayEnergy(state.energy);
       if (result.success) {
         spawnFloatingPoint(result.pointsGained, clickX, clickY);
-        if (result.event) showBanner(result.event);
+        if (result.event) showEffectBanner(result.event);
+        else if (result.isPowerSurge) showBanner(POWER_SURGE_MESSAGE, 'power_surge');
         return;
       }
       if (result.reason === 'session_not_found') {
@@ -307,6 +315,19 @@ function Gallery() {
     if (!gameState) return;
     try {
       const { state, success, reason } = await purchaseFeatureUnlock(gameState.sessionId, featureId);
+      setGameState(state);
+      setDisplayEnergy(state.energy);
+      flashLeft(success ? '🔓 unlocked!' : (UPGRADE_FAIL_MESSAGES[reason ?? ''] ?? '❌ failed'));
+    } catch {
+      flashLeft('❌ purchase failed');
+    }
+  }
+
+  /** One-time click upgrade purchase. */
+  async function handleClickUpgrade(upgradeId: string) {
+    if (!gameState) return;
+    try {
+      const { state, success, reason } = await purchaseClickUpgrade(gameState.sessionId, upgradeId);
       setGameState(state);
       setDisplayEnergy(state.energy);
       flashLeft(success ? '🔓 unlocked!' : (UPGRADE_FAIL_MESSAGES[reason ?? ''] ?? '❌ failed'));
@@ -365,8 +386,8 @@ function Gallery() {
     <main className="gallery-game">
 
       {eventBanner && (
-        <div className={`event-banner event-banner--${eventBanner}`}>
-          {EVENT_MESSAGES[eventBanner]}
+        <div className={`event-banner event-banner--${eventBanner.variant}`}>
+          {eventBanner.message}
         </div>
       )}
 
@@ -439,20 +460,39 @@ function Gallery() {
             );
           })}
 
-          {/* ── Placeholder click augments (coming soon) ── */}
-          {CLICK_PLACEHOLDER_DEFS.map(item => (
-            <div key={item.id} className="upgrade-item upgrade-item--placeholder">
-              <div className="upgrade-item-header">
-                <span className="upgrade-item-icon">{item.icon}</span>
-                <p className="upgrade-item-name">{item.name}</p>
+          {/* ── Click upgrades (one-time, wired to backend) ── */}
+          {CLICK_UPGRADE_UI_DEFS.map(item => {
+            const isOwned   = gameState.ownedClickUpgrades.includes(item.id);
+            const canAfford = !isOwned && gameState.score >= item.cost;
+            return (
+              <div key={item.id} className={`upgrade-item${isOwned ? ' upgrade-item--owned' : ''}`}>
+                <div className="upgrade-item-header">
+                  <span className="upgrade-item-icon">{item.icon}</span>
+                  <div className="upgrade-item-meta">
+                    <p className="upgrade-item-name">{item.name}</p>
+                    {isOwned && <p className="upgrade-item-level">active ✓</p>}
+                  </div>
+                </div>
+                <p className="upgrade-item-desc">{item.description}</p>
+                <div className="upgrade-item-footer">
+                  {isOwned ? (
+                    <span className="upgrade-item-cost upgrade-item-cost--owned">owned</span>
+                  ) : (
+                    <>
+                      <span className="upgrade-item-cost">{item.cost} pts</span>
+                      <button
+                        className="upgrade-buy-btn"
+                        onClick={() => void handleClickUpgrade(item.id)}
+                        disabled={!canAfford}
+                      >
+                        unlock
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              <p className="upgrade-item-desc">{item.description}</p>
-              <div className="upgrade-item-footer">
-                <span className="upgrade-item-cost">{item.previewCost} pts</span>
-                <span className="upgrade-coming-tag">coming soon</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {upgradeMessage && <p className="upgrade-feedback" role="status">{upgradeMessage}</p>}
         </aside>

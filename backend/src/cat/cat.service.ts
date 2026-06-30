@@ -6,9 +6,12 @@ import {
   CAT_NAP_CHANCE,
   CAT_NAP_DURATION_MS,
   CLICK_COOLDOWN_MS,
+  CLICK_OVERFLOW_PPS_PERCENT,
+  CLICK_UPGRADE_DEFS,
   COMBO_BONUS_MULTIPLIER,
   COMBO_BONUS_THRESHOLD,
   COMBO_WINDOW_MS,
+  DOUBLE_STRIKE_CHANCE,
   ENERGY_COST_PER_CLICK,
   ENERGY_REGEN_PER_SECOND,
   FEATURE_UNLOCK_COSTS,
@@ -19,6 +22,7 @@ import {
   MAX_ENERGY,
   MAX_UPGRADE_LEVEL,
   PlayerSession,
+  POWER_SURGE_CLICK_INTERVAL,
   SESSION_EXPIRE_MS,
   UPGRADE_COSTS,
   UPGRADE_POINTS,
@@ -52,6 +56,8 @@ export class CatService {
       unlockedFeatures:          [],
       ownedAutoUpgrades:         [],
       lastAutoTickTimestamp:     now,
+      ownedClickUpgrades:        [],
+      powerSurgeClickCounter:    0,
     };
     this.sessions.set(sessionId, session);
     return this.toDto(session);
@@ -124,6 +130,26 @@ export class CatService {
       points *= COMBO_BONUS_MULTIPLIER;
     }
 
+    // Click overflow — adds a flat bonus equal to a % of current totalPps
+    if (session.ownedClickUpgrades.includes('click_overflow')) {
+      points += this.computeTotalPps(session) * CLICK_OVERFLOW_PPS_PERCENT;
+    }
+
+    // Power surge — every Nth click since purchase deals 5× normal score
+    let isPowerSurgeClick = false;
+    if (session.ownedClickUpgrades.includes('power_surge')) {
+      session.powerSurgeClickCounter += 1;
+      if (session.powerSurgeClickCounter % POWER_SURGE_CLICK_INTERVAL === 0) {
+        points *= 5;
+        isPowerSurgeClick = true;
+      }
+    }
+
+    // Double strike — 25% chance to count this click's points twice
+    if (session.ownedClickUpgrades.includes('double_strike') && Math.random() < DOUBLE_STRIKE_CHANCE) {
+      points *= 2;
+    }
+
     // Random event — one roll, ranges are fixed; effects are gated by unlocks
     let event: ActiveEffect | undefined;
     const roll = Math.random();
@@ -170,6 +196,7 @@ export class CatService {
       pointsGained: Math.round(points),
       comboStreak:  session.comboStreak,
       event,
+      isPowerSurge: isPowerSurgeClick || undefined,
     };
 
     return { state: this.toDto(session, result), result };
@@ -257,6 +284,39 @@ export class CatService {
     return { state: this.toDto(session), success: true };
   }
 
+  /**
+   * Purchases a one-time click upgrade (double_strike, click_overflow, power_surge).
+   * Each click upgrade can only be bought once per session.
+   */
+  purchaseClickUpgrade(
+    sessionId: string,
+    upgradeId: string,
+  ): { state: GameStateDto; success: boolean; reason?: string } {
+    const session = this.sessions.get(sessionId);
+    if (!session) return { state: this.emptyDto(), success: false, reason: 'session_not_found' };
+
+    const def = CLICK_UPGRADE_DEFS[upgradeId];
+    if (!def) {
+      return { state: this.toDto(session), success: false, reason: 'unknown_item' };
+    }
+    if (session.ownedClickUpgrades.includes(upgradeId)) {
+      return { state: this.toDto(session), success: false, reason: 'already_owned' };
+    }
+    if (session.score < def.cost) {
+      return { state: this.toDto(session), success: false, reason: 'insufficient_score' };
+    }
+
+    this.applyAutoTick(session);
+    session.score -= def.cost;
+    session.ownedClickUpgrades.push(upgradeId);
+    if (upgradeId === 'power_surge') {
+      session.powerSurgeClickCounter = 0; // start counting fresh from purchase
+    }
+    session.lastActivityTimestamp = Date.now();
+
+    return { state: this.toDto(session), success: true };
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   /**
@@ -324,6 +384,7 @@ export class CatService {
       unlockedFeatures:  [...session.unlockedFeatures],
       ownedAutoUpgrades: [...session.ownedAutoUpgrades],
       totalPps:          Math.round(this.computeTotalPps(session) * 100) / 100,
+      ownedClickUpgrades: [...session.ownedClickUpgrades],
     };
   }
 
@@ -342,6 +403,7 @@ export class CatService {
       unlockedFeatures:  [],
       ownedAutoUpgrades: [],
       totalPps:          0,
+      ownedClickUpgrades: [],
     };
   }
 

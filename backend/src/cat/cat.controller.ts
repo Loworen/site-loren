@@ -7,6 +7,7 @@ import { ClickResult, GameStateDto } from './cat-types';
 interface SessionBody     { sessionId?: string; }
 interface UnlockBody      { sessionId?: string; featureId?: string; }
 interface AutoUpgradeBody { sessionId?: string; upgradeId?: string; }
+interface ClickUpgradeBody { sessionId?: string; upgradeId?: string; }
 
 // ── Response shapes ───────────────────────────────────────────────────────
 
@@ -69,6 +70,19 @@ export class CatController {
   @HttpCode(200)
   purchaseAuto(@Body() body: AutoUpgradeBody): PurchaseResponse {
     return this.catService.purchaseAutoUpgrade(
+      body.sessionId ?? '',
+      body.upgradeId ?? '',
+    );
+  }
+
+  /**
+   * POST /api/cat/click-upgrade { sessionId, upgradeId }
+   * Purchases a one-time click upgrade: double_strike | click_overflow | power_surge.
+   */
+  @Post('click-upgrade')
+  @HttpCode(200)
+  purchaseClickUpgrade(@Body() body: ClickUpgradeBody): PurchaseResponse {
+    return this.catService.purchaseClickUpgrade(
       body.sessionId ?? '',
       body.upgradeId ?? '',
     );

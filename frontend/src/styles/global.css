@@ -306,6 +306,12 @@ main {
   border: 1px solid #60d090;
 }
 
+.event-banner--power_surge {
+  background: #dde8ff;
+  color: #1a3a7a;
+  border: 1px solid #6090e0;
+}
+
 @keyframes banner-in {
   from { opacity: 0; transform: translateY(-8px); }
   to   { opacity: 1; transform: translateY(0); }

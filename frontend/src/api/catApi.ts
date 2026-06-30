@@ -5,28 +5,30 @@ import { API_BASE_URL } from './config';
 export type ActiveEffect = 'golden_paw' | 'cat_nap' | 'frenzy';
 
 export interface ClickResult {
-  success:      boolean;
-  pointsGained: number;
-  reason?:      string;
-  event?:       ActiveEffect;
-  comboStreak:  number;
+  success:       boolean;
+  pointsGained:  number;
+  reason?:       string;
+  event?:        ActiveEffect;
+  comboStreak:   number;
+  isPowerSurge?: boolean;
 }
 
 export interface GameState {
-  sessionId:         string;
-  clicks:            number;
-  score:             number;      // Math.floor of internal float
-  energy:            number;
-  maxEnergy:         number;
-  comboStreak:       number;
-  upgradeLevel:      number;
-  activeEffects:     ActiveEffect[];
-  nextUpgradeCost:   number | null;
-  clicksPerPoint:    number;
-  lastClickResult?:  ClickResult;
-  unlockedFeatures:  string[];   // which one-time feature unlocks are active
-  ownedAutoUpgrades: string[];   // which auto upgrades have been purchased
-  totalPps:          number;     // current pts/sec from owned auto upgrades
+  sessionId:          string;
+  clicks:             number;
+  score:              number;      // Math.floor of internal float
+  energy:             number;
+  maxEnergy:          number;
+  comboStreak:        number;
+  upgradeLevel:       number;
+  activeEffects:      ActiveEffect[];
+  nextUpgradeCost:    number | null;
+  clicksPerPoint:     number;
+  lastClickResult?:   ClickResult;
+  unlockedFeatures:   string[];   // which one-time feature unlocks are active
+  ownedAutoUpgrades:  string[];   // which auto upgrades have been purchased
+  totalPps:           number;     // current pts/sec from owned auto upgrades
+  ownedClickUpgrades: string[];   // which click upgrades have been purchased
 }
 
 // ── Shared response type for all purchase actions ─────────────────────────
@@ -113,5 +115,22 @@ export async function purchaseAutoUpgrade(
     body:    JSON.stringify({ sessionId, upgradeId }),
   });
   if (!res.ok) throw new Error(`purchaseAutoUpgrade failed: ${res.status}`);
+  return res.json() as Promise<PurchaseResult>;
+}
+
+/**
+ * Purchases a one-time click upgrade.
+ * upgradeId: 'double_strike' | 'click_overflow' | 'power_surge'
+ */
+export async function purchaseClickUpgrade(
+  sessionId: string,
+  upgradeId: string,
+): Promise<PurchaseResult> {
+  const res = await fetch(`${API_BASE_URL}/cat/click-upgrade`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ sessionId, upgradeId }),
+  });
+  if (!res.ok) throw new Error(`purchaseClickUpgrade failed: ${res.status}`);
   return res.json() as Promise<PurchaseResult>;
 }

@@ -39,6 +39,30 @@ export const FEATURE_UNLOCK_COSTS: Readonly<Record<string, number>> = {
   frenzy:      300,
 };
 
+// ── Click upgrades (one-time, modify click outcomes) ──────────────────────
+
+export interface ClickUpgradeDef {
+  id:   string;
+  cost: number;
+}
+
+/**
+ * One-time click-side upgrades that, once purchased, permanently modify
+ * how processClick() computes a click's outcome:
+ *   double_strike  → 25% chance per click to count the click twice
+ *   click_overflow → each click adds 10% of current totalPps as bonus score
+ *   power_surge    → every 10th click (since purchase) deals 5× normal score
+ */
+export const CLICK_UPGRADE_DEFS: Readonly<Record<string, ClickUpgradeDef>> = {
+  double_strike:  { id: 'double_strike',  cost:   500 },
+  click_overflow: { id: 'click_overflow', cost:   750 },
+  power_surge:    { id: 'power_surge',    cost: 1_000 },
+};
+
+export const DOUBLE_STRIKE_CHANCE       = 0.25; // 25% chance to count twice
+export const CLICK_OVERFLOW_PPS_PERCENT = 0.10; // 10% of totalPps added per click
+export const POWER_SURGE_CLICK_INTERVAL = 10;   // every Nth click since purchase
+
 // ── Auto upgrades (passive PPS income) ───────────────────────────────────
 
 export interface AutoUpgradeDef {
@@ -87,15 +111,18 @@ export interface PlayerSession {
   unlockedFeatures:        string[]; // feature IDs that have been purchased
   ownedAutoUpgrades:       string[]; // auto upgrade IDs that have been purchased
   lastAutoTickTimestamp:   number;   // epoch ms; used for PPS income calculation
+  ownedClickUpgrades:      string[]; // click upgrade IDs that have been purchased
+  powerSurgeClickCounter:  number;   // counts clicks since power_surge was purchased
 }
 
 /** Outcome of a single click action. */
 export interface ClickResult {
-  success:      boolean;
-  pointsGained: number;
-  reason?:      ClickFailureReason;
-  event?:       ActiveEffect;
-  comboStreak:  number;
+  success:        boolean;
+  pointsGained:   number;
+  reason?:        ClickFailureReason;
+  event?:         ActiveEffect;
+  comboStreak:    number;
+  isPowerSurge?:  boolean; // true when this click triggered a power_surge 5× hit
 }
 
 /** Sanitised view of session state sent to the client. */
@@ -115,4 +142,5 @@ export interface GameStateDto {
   unlockedFeatures:  string[];
   ownedAutoUpgrades: string[];
   totalPps:          number;  // current pts/sec from owned auto upgrades
+  ownedClickUpgrades: string[];
 }
