@@ -1,10 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import {
+  ACHIEVEMENT_THRESHOLDS,
   ActiveEffect,
   AUTO_UPGRADE_DEFS,
-  CAT_NAP_CHANCE,
-  CAT_NAP_DURATION_MS,
+  BASE_CLICK_SCORE,
+  BASE_CLICK_SCORE_ENHANCED,
+  CAT_BITE_CHANCE,
+  CAT_BITE_DURATION_MS,
+  CATNIP_COST,
+  CATNIP_DURATION_MS,
   CLICK_COOLDOWN_MS,
   CLICK_OVERFLOW_PPS_PERCENT,
   CLICK_UPGRADE_DEFS,
@@ -20,12 +25,9 @@ import {
   GOLDEN_PAW_CHANCE,
   MAX_AUTO_TICK_ELAPSED_SEC,
   MAX_ENERGY,
-  MAX_UPGRADE_LEVEL,
   PlayerSession,
   POWER_SURGE_CLICK_INTERVAL,
   SESSION_EXPIRE_MS,
-  UPGRADE_COSTS,
-  UPGRADE_POINTS,
   ClickResult,
   GameStateDto,
 } from './cat-types';
@@ -38,7 +40,6 @@ export class CatService {
 
   initSession(): GameStateDto {
     this.purgeExpiredSessions();
-
     const now = Date.now();
     const sessionId = randomUUID();
     const session: PlayerSession = {
@@ -49,7 +50,6 @@ export class CatService {
       comboStreak:               0,
       lastClickTimestamp:        0,
       lastEnergyUpdateTimestamp: now,
-      upgradeLevel:              0,
       activeEffects:             [],
       frenzyClicksRemaining:     0,
       lastActivityTimestamp:     now,
@@ -58,6 +58,8 @@ export class CatService {
       lastAutoTickTimestamp:     now,
       ownedClickUpgrades:        [],
       powerSurgeClickCounter:    0,
+      catnipCharges:             0,
+      catnipActiveUntil:         0,
     };
     this.sessions.set(sessionId, session);
     return this.toDto(session);
@@ -83,11 +85,11 @@ export class CatService {
 
     const now = Date.now();
     session.lastActivityTimestamp = now;
-
     this.applyAutoTick(session);
     this.regenEnergy(session);
 
-    // ── Guard: click cooldown ──────────────────────────────────────────────
+    // ── Guards ─────────────────────────────────────────────────────────────
+
     if (session.lastClickTimestamp > 0 && now - session.lastClickTimestamp < CLICK_COOLDOWN_MS) {
       return {
         state:  this.toDto(session),
@@ -95,15 +97,13 @@ export class CatService {
       };
     }
 
-    // ── Guard: cat nap ─────────────────────────────────────────────────────
-    if (session.activeEffects.includes('cat_nap')) {
+    if (session.activeEffects.includes('cat_bite')) {
       return {
         state:  this.toDto(session),
-        result: { success: false, pointsGained: 0, reason: 'cat_nap', comboStreak: session.comboStreak },
+        result: { success: false, pointsGained: 0, reason: 'cat_bite', comboStreak: session.comboStreak },
       };
     }
 
-    // ── Guard: energy (waived during frenzy) ──────────────────────────────
     const hasFrenzy = session.frenzyClicksRemaining > 0;
     if (!hasFrenzy && session.energy < ENERGY_COST_PER_CLICK) {
       return {
@@ -112,30 +112,31 @@ export class CatService {
       };
     }
 
-    // ── Click is valid ─────────────────────────────────────────────────────
+    // ── Click is valid ──────────────────────────────────────────────────────
 
     // Combo streak
-    const timeSinceLast = session.lastClickTimestamp > 0 ? now - session.lastClickTimestamp : Infinity;
-    session.comboStreak   = timeSinceLast <= COMBO_WINDOW_MS ? session.comboStreak + 1 : 1;
+    const timeSinceLast = session.lastClickTimestamp > 0
+      ? now - session.lastClickTimestamp
+      : Infinity;
+    session.comboStreak        = timeSinceLast <= COMBO_WINDOW_MS ? session.comboStreak + 1 : 1;
     session.lastClickTimestamp = now;
 
-    // Base points
-    let points = UPGRADE_POINTS[session.upgradeLevel] ?? 1;
+    // Base score — doubles once sharp_claws achievement is earned
+    let points = session.unlockedFeatures.includes('sharp_claws')
+      ? BASE_CLICK_SCORE_ENHANCED
+      : BASE_CLICK_SCORE;
 
-    // Combo bonus — only active if 'combo_bonus' has been unlocked
-    if (
-      session.comboStreak >= COMBO_BONUS_THRESHOLD &&
-      session.unlockedFeatures.includes('combo_bonus')
-    ) {
+    // Combo bonus (only if combo_bonus achievement is unlocked)
+    if (session.comboStreak >= COMBO_BONUS_THRESHOLD && session.unlockedFeatures.includes('combo_bonus')) {
       points *= COMBO_BONUS_MULTIPLIER;
     }
 
-    // Click overflow — adds a flat bonus equal to a % of current totalPps
+    // Click overflow — flat bonus equal to a % of current PPS
     if (session.ownedClickUpgrades.includes('click_overflow')) {
       points += this.computeTotalPps(session) * CLICK_OVERFLOW_PPS_PERCENT;
     }
 
-    // Power surge — every Nth click since purchase deals 5× normal score
+    // Power surge — every Nth click since purchase deals 5×
     let isPowerSurgeClick = false;
     if (session.ownedClickUpgrades.includes('power_surge')) {
       session.powerSurgeClickCounter += 1;
@@ -145,32 +146,32 @@ export class CatService {
       }
     }
 
-    // Double strike — 25% chance to count this click's points twice
+    // Double strike — 25% chance to count the click twice
     if (session.ownedClickUpgrades.includes('double_strike') && Math.random() < DOUBLE_STRIKE_CHANCE) {
       points *= 2;
     }
 
-    // Random event — one roll, ranges are fixed; effects are gated by unlocks
+    // Random event — fixed probability ranges; golden_paw and frenzy gated by unlocks
     let event: ActiveEffect | undefined;
     const roll = Math.random();
 
     if (roll < GOLDEN_PAW_CHANCE) {
-      // Golden-paw range — only fires if unlocked
       if (session.unlockedFeatures.includes('golden_paw')) {
         points *= 5;
         event = 'golden_paw';
       }
-    } else if (roll < GOLDEN_PAW_CHANCE + CAT_NAP_CHANCE) {
-      // Cat-nap range — always fires (no unlock needed; it's a built-in hazard)
-      session.energy      = 0;
-      session.activeEffects = this.addEffect(session.activeEffects, 'cat_nap');
-      event = 'cat_nap';
-      setTimeout(() => {
-        const s = this.sessions.get(sessionId);
-        if (s) s.activeEffects = s.activeEffects.filter(e => e !== 'cat_nap');
-      }, CAT_NAP_DURATION_MS);
-    } else if (roll < GOLDEN_PAW_CHANCE + CAT_NAP_CHANCE + FRENZY_CHANCE) {
-      // Frenzy range — only fires if unlocked
+    } else if (roll < GOLDEN_PAW_CHANCE + CAT_BITE_CHANCE) {
+      // Cat bite always fires unless catnip is active
+      if (session.catnipActiveUntil <= now) {
+        session.energy        = 0;
+        session.activeEffects = this.addEffect(session.activeEffects, 'cat_bite');
+        event = 'cat_bite';
+        setTimeout(() => {
+          const s = this.sessions.get(sessionId);
+          if (s) s.activeEffects = s.activeEffects.filter(e => e !== 'cat_bite');
+        }, CAT_BITE_DURATION_MS);
+      }
+    } else if (roll < GOLDEN_PAW_CHANCE + CAT_BITE_CHANCE + FRENZY_CHANCE) {
       if (session.unlockedFeatures.includes('frenzy')) {
         session.frenzyClicksRemaining = FRENZY_CLICK_COUNT;
         session.activeEffects         = this.addEffect(session.activeEffects, 'frenzy');
@@ -191,6 +192,9 @@ export class CatService {
     session.score  += points;
     session.clicks += 1;
 
+    // Check whether any achievement thresholds were just crossed
+    this.checkAchievements(session);
+
     const result: ClickResult = {
       success:      true,
       pointsGained: Math.round(points),
@@ -202,32 +206,6 @@ export class CatService {
     return { state: this.toDto(session, result), result };
   }
 
-  processUpgrade(sessionId: string): { state: GameStateDto; success: boolean; reason?: string } {
-    const session = this.sessions.get(sessionId);
-    if (!session) return { state: this.emptyDto(), success: false, reason: 'session_not_found' };
-
-    const nextLevel = session.upgradeLevel + 1;
-    if (nextLevel > MAX_UPGRADE_LEVEL) {
-      return { state: this.toDto(session), success: false, reason: 'max_level' };
-    }
-
-    const cost = UPGRADE_COSTS[nextLevel] ?? Infinity;
-    if (session.score < cost) {
-      return { state: this.toDto(session), success: false, reason: 'insufficient_score' };
-    }
-
-    this.applyAutoTick(session);
-    session.score        -= cost;
-    session.upgradeLevel  = nextLevel;
-    session.lastActivityTimestamp = Date.now();
-
-    return { state: this.toDto(session), success: true };
-  }
-
-  /**
-   * Purchases a one-time feature unlock (combo_bonus, golden_paw, frenzy).
-   * After purchase the corresponding mechanic becomes active for this session.
-   */
   purchaseFeatureUnlock(
     sessionId: string,
     featureId: string,
@@ -236,28 +214,20 @@ export class CatService {
     if (!session) return { state: this.emptyDto(), success: false, reason: 'session_not_found' };
 
     const cost = FEATURE_UNLOCK_COSTS[featureId];
-    if (cost === undefined) {
+    if (cost === undefined)
       return { state: this.toDto(session), success: false, reason: 'unknown_item' };
-    }
-    if (session.unlockedFeatures.includes(featureId)) {
+    if (session.unlockedFeatures.includes(featureId))
       return { state: this.toDto(session), success: false, reason: 'already_owned' };
-    }
-    if (session.score < cost) {
+    if (session.score < cost)
       return { state: this.toDto(session), success: false, reason: 'insufficient_score' };
-    }
 
     this.applyAutoTick(session);
     session.score -= cost;
     session.unlockedFeatures.push(featureId);
     session.lastActivityTimestamp = Date.now();
-
     return { state: this.toDto(session), success: true };
   }
 
-  /**
-   * Purchases a one-time auto upgrade (passive PPS income).
-   * Each auto upgrade can only be bought once per session.
-   */
   purchaseAutoUpgrade(
     sessionId: string,
     upgradeId: string,
@@ -266,28 +236,19 @@ export class CatService {
     if (!session) return { state: this.emptyDto(), success: false, reason: 'session_not_found' };
 
     const def = AUTO_UPGRADE_DEFS[upgradeId];
-    if (!def) {
-      return { state: this.toDto(session), success: false, reason: 'unknown_item' };
-    }
-    if (session.ownedAutoUpgrades.includes(upgradeId)) {
+    if (!def) return { state: this.toDto(session), success: false, reason: 'unknown_item' };
+    if (session.ownedAutoUpgrades.includes(upgradeId))
       return { state: this.toDto(session), success: false, reason: 'already_owned' };
-    }
-    if (session.score < def.cost) {
+    if (session.score < def.cost)
       return { state: this.toDto(session), success: false, reason: 'insufficient_score' };
-    }
 
     this.applyAutoTick(session);
     session.score -= def.cost;
     session.ownedAutoUpgrades.push(upgradeId);
     session.lastActivityTimestamp = Date.now();
-
     return { state: this.toDto(session), success: true };
   }
 
-  /**
-   * Purchases a one-time click upgrade (double_strike, click_overflow, power_surge).
-   * Each click upgrade can only be bought once per session.
-   */
   purchaseClickUpgrade(
     sessionId: string,
     upgradeId: string,
@@ -296,33 +257,60 @@ export class CatService {
     if (!session) return { state: this.emptyDto(), success: false, reason: 'session_not_found' };
 
     const def = CLICK_UPGRADE_DEFS[upgradeId];
-    if (!def) {
-      return { state: this.toDto(session), success: false, reason: 'unknown_item' };
-    }
-    if (session.ownedClickUpgrades.includes(upgradeId)) {
+    if (!def) return { state: this.toDto(session), success: false, reason: 'unknown_item' };
+    if (session.ownedClickUpgrades.includes(upgradeId))
       return { state: this.toDto(session), success: false, reason: 'already_owned' };
-    }
-    if (session.score < def.cost) {
+    if (session.score < def.cost)
       return { state: this.toDto(session), success: false, reason: 'insufficient_score' };
-    }
 
     this.applyAutoTick(session);
     session.score -= def.cost;
     session.ownedClickUpgrades.push(upgradeId);
-    if (upgradeId === 'power_surge') {
-      session.powerSurgeClickCounter = 0; // start counting fresh from purchase
-    }
+    if (upgradeId === 'power_surge') session.powerSurgeClickCounter = 0;
     session.lastActivityTimestamp = Date.now();
+    return { state: this.toDto(session), success: true };
+  }
 
+  /** Purchase one catnip charge (costs CATNIP_COST score). */
+  buyCatnip(sessionId: string): { state: GameStateDto; success: boolean; reason?: string } {
+    const session = this.sessions.get(sessionId);
+    if (!session) return { state: this.emptyDto(), success: false, reason: 'session_not_found' };
+    if (session.score < CATNIP_COST)
+      return { state: this.toDto(session), success: false, reason: 'insufficient_score' };
+
+    this.applyAutoTick(session);
+    session.score -= CATNIP_COST;
+    session.catnipCharges += 1;
+    session.lastActivityTimestamp = Date.now();
+    return { state: this.toDto(session), success: true };
+  }
+
+  /** Use one catnip charge — grants cat-bite immunity for CATNIP_DURATION_MS. */
+  useCatnip(sessionId: string): { state: GameStateDto; success: boolean; reason?: string } {
+    const session = this.sessions.get(sessionId);
+    if (!session) return { state: this.emptyDto(), success: false, reason: 'session_not_found' };
+    if (session.catnipCharges <= 0)
+      return { state: this.toDto(session), success: false, reason: 'no_charges' };
+
+    const now = Date.now();
+    session.catnipCharges -= 1;
+    // Stack with any remaining duration so back-to-back uses don't waste overlap
+    session.catnipActiveUntil = Math.max(session.catnipActiveUntil, now) + CATNIP_DURATION_MS;
+    session.lastActivityTimestamp = now;
     return { state: this.toDto(session), success: true };
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
 
-  /**
-   * Adds PPS-based passive income accumulated since the last tick.
-   * Capped at MAX_AUTO_TICK_ELAPSED_SEC to limit offline windfalls.
-   */
+  /** Auto-unlock features when click-count milestones are reached. */
+  private checkAchievements(session: PlayerSession): void {
+    for (const [feature, threshold] of Object.entries(ACHIEVEMENT_THRESHOLDS)) {
+      if (session.clicks >= threshold && !session.unlockedFeatures.includes(feature)) {
+        session.unlockedFeatures.push(feature);
+      }
+    }
+  }
+
   private applyAutoTick(session: PlayerSession): void {
     const now     = Date.now();
     const elapsed = Math.min(
@@ -330,30 +318,19 @@ export class CatService {
       MAX_AUTO_TICK_ELAPSED_SEC,
     );
     const pps = this.computeTotalPps(session);
-    if (pps > 0 && elapsed > 0) {
-      session.score += pps * elapsed;
-    }
+    if (pps > 0 && elapsed > 0) session.score += pps * elapsed;
     session.lastAutoTickTimestamp = now;
   }
 
-  /**
-   * Computes total PPS: sum all additive sources first, then apply multipliers.
-   */
   private computeTotalPps(session: PlayerSession): number {
-    let basePps    = 0;
-    let multiplier = 1;
-
+    let base = 0, multiplier = 1;
     for (const id of session.ownedAutoUpgrades) {
       const def = AUTO_UPGRADE_DEFS[id];
       if (!def) continue;
-      if (def.pps !== null) {
-        basePps += def.pps;
-      } else if (def.multiplier !== undefined) {
-        multiplier *= def.multiplier;
-      }
+      if (def.pps !== null) base += def.pps;
+      else if (def.multiplier !== undefined) multiplier *= def.multiplier;
     }
-
-    return basePps * multiplier;
+    return base * multiplier;
   }
 
   private regenEnergy(session: PlayerSession): void {
@@ -368,51 +345,40 @@ export class CatService {
   }
 
   private toDto(session: PlayerSession, lastClickResult?: ClickResult): GameStateDto {
-    const nextLevel = session.upgradeLevel + 1;
     return {
-      sessionId:         session.sessionId,
-      clicks:            session.clicks,
-      score:             Math.floor(session.score),
-      energy:            Math.round(session.energy),
-      maxEnergy:         MAX_ENERGY,
-      comboStreak:       session.comboStreak,
-      upgradeLevel:      session.upgradeLevel,
-      activeEffects:     [...session.activeEffects],
-      nextUpgradeCost:   nextLevel <= MAX_UPGRADE_LEVEL ? (UPGRADE_COSTS[nextLevel] ?? null) : null,
-      clicksPerPoint:    UPGRADE_POINTS[session.upgradeLevel] ?? 1,
-      lastClickResult,
-      unlockedFeatures:  [...session.unlockedFeatures],
-      ownedAutoUpgrades: [...session.ownedAutoUpgrades],
-      totalPps:          Math.round(this.computeTotalPps(session) * 100) / 100,
+      sessionId:          session.sessionId,
+      clicks:             session.clicks,
+      score:              Math.floor(session.score),
+      energy:             Math.round(session.energy),
+      maxEnergy:          MAX_ENERGY,
+      comboStreak:        session.comboStreak,
+      activeEffects:      [...session.activeEffects],
+      unlockedFeatures:   [...session.unlockedFeatures],
+      ownedAutoUpgrades:  [...session.ownedAutoUpgrades],
+      totalPps:           Math.round(this.computeTotalPps(session) * 100) / 100,
       ownedClickUpgrades: [...session.ownedClickUpgrades],
+      clicksPerPoint:     session.unlockedFeatures.includes('sharp_claws')
+                            ? BASE_CLICK_SCORE_ENHANCED
+                            : BASE_CLICK_SCORE,
+      lastClickResult,
+      catnipCharges:      session.catnipCharges,
+      catnipActiveUntil:  session.catnipActiveUntil,
     };
   }
 
   private emptyDto(): GameStateDto {
     return {
-      sessionId:         '',
-      clicks:            0,
-      score:             0,
-      energy:            0,
-      maxEnergy:         MAX_ENERGY,
-      comboStreak:       0,
-      upgradeLevel:      0,
-      activeEffects:     [],
-      nextUpgradeCost:   UPGRADE_COSTS[1] ?? null,
-      clicksPerPoint:    1,
-      unlockedFeatures:  [],
-      ownedAutoUpgrades: [],
-      totalPps:          0,
-      ownedClickUpgrades: [],
+      sessionId: '', clicks: 0, score: 0, energy: 0, maxEnergy: MAX_ENERGY,
+      comboStreak: 0, activeEffects: [], unlockedFeatures: [],
+      ownedAutoUpgrades: [], totalPps: 0, ownedClickUpgrades: [],
+      clicksPerPoint: BASE_CLICK_SCORE, catnipCharges: 0, catnipActiveUntil: 0,
     };
   }
 
   private purgeExpiredSessions(): void {
     const now = Date.now();
     for (const [id, session] of this.sessions) {
-      if (now - session.lastActivityTimestamp > SESSION_EXPIRE_MS) {
-        this.sessions.delete(id);
-      }
+      if (now - session.lastActivityTimestamp > SESSION_EXPIRE_MS) this.sessions.delete(id);
     }
   }
 }

@@ -294,10 +294,10 @@ main {
   border: 1px solid #f0c040;
 }
 
-.event-banner--cat_nap {
-  background: #e8e0ff;
-  color: #4a3a80;
-  border: 1px solid #b09ee0;
+.event-banner--cat_bite {
+  background: #ffe0e0;
+  color: #7a1a1a;
+  border: 1px solid #f09090;
 }
 
 .event-banner--frenzy {
@@ -424,11 +424,11 @@ main {
   border: 1px solid rgba(60, 220, 100, 0.4);
 }
 
-/* matches the ActiveEffect literal 'cat_nap' used in className template strings */
-.effect-pill--cat_nap {
-  background: rgba(180, 160, 240, 0.2);
-  color: #c0b0f0;
-  border: 1px solid rgba(180, 160, 240, 0.4);
+/* matches the ActiveEffect literal 'cat_bite' used in className template strings */
+.effect-pill--cat_bite {
+  background: rgba(240, 100, 100, 0.2);
+  color: #f08080;
+  border: 1px solid rgba(240, 100, 100, 0.4);
 }
 
 /* ── Cat button ───────────────────────────────────────────────────────── */
@@ -819,4 +819,218 @@ main {
 /* "active ✓" level-line inside owned feature-unlock cards */
 .upgrade-item--owned .upgrade-item-level {
   color: #6ecf6e;
+}
+
+/* ─────────────────────────────────────────
+   ACTIVE ITEMS
+───────────────────────────────────────── */
+
+.active-items {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 12px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Single active-item row */
+.active-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  transition: border-color 0.2s;
+}
+
+/* Glowing green border while the item effect is running */
+.active-item--live {
+  border-color: rgba(110, 207, 110, 0.45);
+  box-shadow: 0 0 8px rgba(110, 207, 110, 0.18);
+}
+
+.active-item-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.active-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.active-item-name {
+  font-family: comfortaa, verdana;
+  font-size: 13px;
+  font-weight: 700;
+  color: aliceblue;
+  margin: 0;
+}
+
+.active-item-status {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  color: #888;
+  margin: 0;
+}
+
+/* Green countdown text while the effect is active */
+.active-item-status--active {
+  color: #6ecf6e;
+  font-weight: 700;
+}
+
+.active-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.active-item-btn {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.07);
+  color: #bbb;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.active-item-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  color: aliceblue;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.active-item-btn--use {
+  border-color: rgba(110, 207, 110, 0.35);
+  color: #6ecf8a;
+  background: rgba(110, 207, 110, 0.1);
+}
+
+.active-item-btn--use:hover:not(:disabled) {
+  background: rgba(110, 207, 110, 0.22);
+  border-color: rgba(110, 207, 110, 0.6);
+}
+
+.active-item-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────
+   ACHIEVEMENTS
+───────────────────────────────────────── */
+
+.achievements-section {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+/* Three-column grid of achievement cards */
+.achievements-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.achievement-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  opacity: 0.55;
+}
+
+/* Unlocked cards become fully visible with a gold accent */
+.achievement-card--unlocked {
+  opacity: 1;
+  border-color: rgba(240, 192, 64, 0.45);
+  box-shadow: 0 0 10px rgba(240, 192, 64, 0.12);
+}
+
+.achievement-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.achievement-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.achievement-name {
+  font-family: comfortaa, verdana;
+  font-size: 13px;
+  font-weight: 700;
+  color: aliceblue;
+  margin: 0;
+}
+
+.achievement-effect {
+  font-family: comfortaa, verdana;
+  font-size: 11px;
+  color: #999;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Thin progress bar for locked achievements */
+.achievement-progress-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+
+.achievement-progress-fill {
+  height: 100%;
+  background: #f9c8d4;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.achievement-meta {
+  font-family: comfortaa, verdana;
+  font-size: 10px;
+  color: #666;
+  margin: 0;
+}
+
+/* Green "unlocked ✓" text on earned achievements */
+.achievement-card--unlocked .achievement-meta {
+  color: #6ecf6e;
+  font-weight: 700;
+}
+
+/* Stack to 1 column on narrow screens */
+@media (max-width: 860px) {
+  .achievements-grid {
+    grid-template-columns: 1fr;
+  }
 }
